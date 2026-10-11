@@ -427,6 +427,9 @@ fn job_from_stored(stored: library::StoredJob, status: MusicJobStatus, message: 
 /// How many times a song is started again after the studio closed on it; a
 /// request that takes the engine down every time must not start for ever.
 const MAX_RESUMES: u32 = 3;
+/// The score stage draws up to 4096 tokens after its prompt in the same context,
+/// so a smaller context fails every song before it starts.
+const MIN_MAX_SEQ: u32 = 8192;
 
 /// Songs the studio was closed on are started again, oldest first. The old
 /// job stays as `cancelled`, its message naming the job that took its place.
@@ -720,7 +723,7 @@ impl EngineOptions {
             backend: self.backend,
             keep_loaded: self.keep_loaded,
             max_batch: Some(self.effective_max_batch()),
-            max_seq: self.max_seq,
+            max_seq: self.max_seq.map(|value| value.max(MIN_MAX_SEQ)),
             vae_core: self.vae_core,
             vae_halo: self.vae_halo,
             disable_flash_attention: self.disable_flash_attention,
@@ -4013,8 +4016,8 @@ async fn update_engine_options(
     if request.max_batch.is_some_and(|value| value == 0 || value > 8) {
         return Err(api_error(StatusCode::BAD_REQUEST, "max_batch must be between 1 and 8".into()));
     }
-    if request.max_seq.is_some_and(|value| !(4096..=24576).contains(&value)) {
-        return Err(api_error(StatusCode::BAD_REQUEST, "max_seq must be between 4096 and 24576".into()));
+    if request.max_seq.is_some_and(|value| !(MIN_MAX_SEQ..=24576).contains(&value)) {
+        return Err(api_error(StatusCode::BAD_REQUEST, format!("max_seq must be between {MIN_MAX_SEQ} and 24576")));
     }
     if request.vae_core.is_some_and(|value| !(64..=4096).contains(&value)) {
         return Err(api_error(StatusCode::BAD_REQUEST, "vae_core must be between 64 and 4096".into()));
@@ -7239,13 +7242,17 @@ fn prepare_replay_synthesis(mut replay: Value, overrides: &ReplayMusicJobRequest
         object.insert("continue_semantic_tokens".into(), Value::Bool(true));
         object.insert("duration".into(), Value::from(total));
         let budget = (total * SEMANTIC_FRAMES_PER_SECOND).ceil() as u64;
+        let sampling = object.entry("semantic_sampling").or_insert_with(|| serde_json::json!({}));
+        if !sampling.is_object() {
+            *sampling = serde_json::json!({});
+        }
         if total > CHECKPOINT_SONG_SECONDS {
-            let sampling = object.entry("semantic_sampling").or_insert_with(|| serde_json::json!({}));
-            if !sampling.is_object() {
-                *sampling = serde_json::json!({});
-            }
             sampling["max_tokens"] = Value::from(budget);
         }
+        // The carried stream already ends where the model chose to stop, so it
+        // would stop again at once; the end is held off until most of the
+        // seconds asked for are composed, and the last quarter may end freely.
+        sampling["min_tokens"] = Value::from(frames as u64 + (extra * SEMANTIC_FRAMES_PER_SECOND * 0.75).floor() as u64);
     }
     // A replay is one song by construction; the engine ignores the counter
     // but the stored provenance should not claim a batch.
@@ -8164,6 +8171,16 @@ fn initial_configuration() -> StudioConfiguration {
 fn sanitize_persisted_configuration(mut configuration: StudioConfiguration) -> StudioConfiguration {
     let declared = capability_engines(false);
     for selection in &mut configuration.selections {
+        // Songs have one local engine and no cloud model to fall back on: an
+        // engine id from an older build, or a cloud choice saved without a
+        // model, would stop every song, so both go back to the studio's engine.
+        if selection.capability == Capability::MusicGeneration {
+            if selection.mode == ExecutionMode::Local || selection.cloud_model.as_deref().is_none_or(|model| model.trim().is_empty()) {
+                selection.mode = ExecutionMode::Local;
+                selection.local_engine = Some(PRIMARY_MUSIC_ENGINE_ID.to_owned());
+            }
+            continue;
+        }
         let engine_serves_capability = selection.local_engine.as_deref().is_some_and(|engine_id| {
             declared.iter().any(|engine| {
                 engine.id == engine_id
@@ -9104,7 +9121,8 @@ mod tests {
         let longer = prepare_replay_synthesis(replay.clone(), &ReplayMusicJobRequest { extend_seconds: Some(30.0), ..replay_overrides() }).unwrap();
         assert_eq!(longer["continue_semantic_tokens"], true);
         assert_eq!(longer["duration"], 40.0);
-        assert!(longer.get("semantic_sampling").is_none());
+        assert!(longer["semantic_sampling"].get("max_tokens").is_none());
+        assert_eq!(longer["semantic_sampling"]["min_tokens"], 250 + 562, "the end waits until most of the 30 s are composed");
         let past = serde_json::json!({"semantic_tokens":vec!["7"; 8750].join(","),"cot":"off"});
         let long = prepare_replay_synthesis(past, &ReplayMusicJobRequest { extend_seconds: Some(60.0), ..replay_overrides() }).unwrap();
         assert_eq!(long["semantic_sampling"]["max_tokens"], 10250);

@@ -210,7 +210,7 @@ export const EngineSettings: React.FC = () => {
 
       <div className="grid gap-3 sm:grid-cols-2">
         {numberField('max_batch', t('maxBatchLabel'), '1', t('maxBatchHint'), 1, 8, 1)}
-        {numberField('max_seq', t('maxSeqLabel'), '24576', t('maxSeqHintYue'), 4096, 24576, 1024)}
+        {numberField('max_seq', t('maxSeqLabel'), '24576', t('maxSeqHintYue'), 8192, 24576, 1024)}
       </div>
 
       <details className="rounded-xl border border-zinc-200 p-3 dark:border-white/10">

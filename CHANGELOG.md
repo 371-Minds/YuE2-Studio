@@ -3,6 +3,15 @@
 What changed, newest first. Dates are release dates; the studio is versioned by its
 Windows build.
 
+## 2026-10-11 — 3.5.4
+
+### Fixed
+
+- **Songs stay on this computer's engine.** Settings from an older build could switch song-making to OpenRouter with no model chosen, and every song then stopped with "OpenRouter music requires a selected model"; songs go back to the studio's own engine, and OpenRouter can be picked for songs only once its catalog offers a model ([ACE-Step-Studio #37](https://github.com/timoncool/ACE-Step-Studio/issues/37)).
+- **The "Classical Music" example was a Christian song** (mislabelled at its source); it is now named for what it is ([#69](https://github.com/timoncool/YuE2-Studio/issues/69)).
+- **Lengthening a song adds the seconds asked for.** Re-render with "+N s" carried on from a track that had already ended, so the model often ended it again at once and the song stayed as long as before; the end now waits until most of the added seconds are composed.
+- **A context of 4096 no longer stops every song.** The score alone can take 4096 tokens, so the engine setting now starts at 8192, and a smaller saved value is raised.
+
 ## 2026-10-10 — 3.5.3
 
 ### Fixed
