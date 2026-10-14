@@ -5,9 +5,9 @@ export const STUDIO = {
   name: 'YuE2 Studio',
   repo: 'https://github.com/timoncool/YuE2-Studio',
   site: 'https://timoncool.github.io/YuE2-Studio/',
-  version: '3.5.4',
-  installerMB: 318.92,
-  updated: '2026-10-11',
+  version: '3.5.5',
+  installerMB: 318.25,
+  updated: '2026-10-14',
   bento: [
     { feature: 1, shot: '02-score' },
     { feature: 3, shot: '04-cover' },
