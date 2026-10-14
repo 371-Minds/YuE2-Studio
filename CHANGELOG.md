@@ -3,6 +3,19 @@
 What changed, newest first. Dates are release dates; the studio is versioned by its
 Windows build.
 
+## 2026-10-14 — 3.5.5
+
+### Fixed
+
+- **The engine starts on macOS.** The bundled engine looked for its libraries in the build machine's folder and never started on a Mac; it now finds them beside itself ([#79](https://github.com/timoncool/YuE2-Studio/issues/79), [#81](https://github.com/timoncool/YuE2-Studio/issues/81)).
+- **The writing assistant works with OpenRouter.** Saving the model put the assistant back on a local provider, so with a key and a model chosen it still said "not installed" and the wand opened the setup page; the choice now stays, and the providers page no longer undoes a choice made on the models page ([#80](https://github.com/timoncool/YuE2-Studio/issues/80)).
+- **Imported tracks show their real length.** An MP3 was measured as if it were 128 kbps, so a 320 kbps file showed two and a half times longer in the library than in the player; files are measured from their own headers, and tracks already imported are measured again on start ([#77](https://github.com/timoncool/YuE2-Studio/issues/77)).
+- **The song details button stays on wide windows.** It disappeared above a certain width, and once the side panel was closed nothing opened it again ([#84](https://github.com/timoncool/YuE2-Studio/issues/84)).
+- **The audio editor keeps the sample rate.** It decoded every file at 44.1 kHz, so a 48 kHz song was resampled on opening and saved at 44.1 kHz; it now opens and saves at the file's own rate ([#83](https://github.com/timoncool/YuE2-Studio/issues/83)).
+- **"Without stopping" stops when a song fails.** It sent the same request again and again although each one failed - a deleted source song, a card out of memory - hundreds of times in a row; a failed song now switches it off and says why.
+- **A failed song names the cause.** The message showed the engine's last complaint, such as "encode failed", instead of the first one that caused it.
+- **Models not downloaded yet are called that.** "Not installed" next to a model read as a broken installation.
+
 ## 2026-10-11 — 3.5.4
 
 ### Fixed
