@@ -919,7 +919,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
   useEffect(() => {
     const stop = () => setForever(false);
     window.addEventListener('yue:cancel-all', stop);
-    return () => window.removeEventListener('yue:cancel-all', stop);
+    window.addEventListener('yue:generation-failed', stop);
+    return () => {
+      window.removeEventListener('yue:cancel-all', stop);
+      window.removeEventListener('yue:generation-failed', stop);
+    };
   }, []);
   const generate = (request: YueRequest) => {
     if (forever) foreverRequest.current = { ...request };
