@@ -1361,6 +1361,7 @@ export const en = {
     engineBinBundled: 'Use the bundled engine',
     engineBinRunning: 'Running now',
     engineBinNotRunning: 'The engine is not running; the next start picks the executable above.',
+    engineBinStarting: 'The engine is starting.',
     engineBinNextStart: 'A restart starts',
     engineBinEnvOverride: 'YUE_ENGINE_BIN is set and wins over this field',
     saveAndRestartEngine: 'Save and restart engine',
