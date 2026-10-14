@@ -1365,6 +1365,7 @@ export const en = {
     engineBinEnvOverride: 'YUE_ENGINE_BIN is set and wins over this field',
     saveAndRestartEngine: 'Save and restart engine',
     restartEngine: 'Restart engine',
+    stemPlayerFailed: 'This recording does not play here: {reason}',
     engineOptionsSavedRestarted: 'Saved. The engine was restarted so the new flags take effect.',
     engineOptionsSavedLater: 'Saved. They apply the next time the engine starts.',
     engineRestarted: 'The engine was restarted.',
