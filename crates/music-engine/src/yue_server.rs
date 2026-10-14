@@ -502,7 +502,7 @@ fn canonical_directory(path: &Path, label: &str) -> Result<PathBuf> {
 /// `canonicalize` on Windows yields `\\?\C:\...`, which the engine's C file
 /// APIs accept but its log prints verbatim; the plain form reads better and
 /// is equally valid for paths under MAX_PATH.
-fn strip_verbatim(path: &Path) -> PathBuf {
+pub fn strip_verbatim(path: &Path) -> PathBuf {
     let text = path.to_string_lossy();
     match text.strip_prefix(r"\\?\") {
         Some(rest) if !rest.starts_with("UNC\\") => PathBuf::from(rest),
