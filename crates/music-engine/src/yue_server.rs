@@ -92,7 +92,7 @@ impl ComputeBackend {
 
 /// Launch flags of `yue-server`, as its usage text documents them. They are
 /// read once at startup, so changing one restarts the engine.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct YueServerOptions {
     /// The device to compute on, passed as `GGML_BACKEND`.
     pub backend: ComputeBackend,
@@ -115,6 +115,10 @@ pub struct YueServerOptions {
     /// loads, passed as `YUE_CUDA_BACKEND`; none off CUDA. A release keeps
     /// one CUDA backend per toolkit in folders of their own.
     pub cuda_folder: Option<&'static str>,
+    /// Anything else the engine accepts as a launch flag, as the line the user
+    /// typed it - split like a shell would when the process starts. It is
+    /// appended after every flag above, so it can also override one of them.
+    pub extra_args: String,
 }
 
 impl YueServerOptions {
@@ -140,8 +144,78 @@ impl YueServerOptions {
         if self.clamp_fp16 {
             arguments.push("--clamp-fp16".into());
         }
+        // Last, so a line of extra arguments can also override one of the
+        // flags the studio set itself - the engine keeps the value it read
+        // last.
+        match split_extra_args(&self.extra_args) {
+            Ok(extra) => arguments.extend(extra),
+            // Settings refuses a line that cannot be split, so this is a
+            // settings file written by hand: better no extra flags at all
+            // than half of them, said where the next start is explained.
+            Err(reason) => note_in_log(&format!("the extra engine arguments were not used: {reason}")),
+        }
         arguments
     }
+}
+
+/// Splits a line of extra launch arguments the way a shell would: on
+/// whitespace, with single and double quotes keeping their contents together
+/// - `--prompt "a long value"` reaches the engine as one argument - and a
+/// backslash escaping the next character outside quotes. An unmatched quote
+/// is refused rather than guessed at: it is nearly always a typo, and the
+/// engine would silently start with half of the line.
+pub fn split_extra_args(input: &str) -> Result<Vec<String>, String> {
+    let mut arguments = Vec::new();
+    let mut current = String::new();
+    // Whether anything has gone into the current argument, so an empty `""`
+    // still counts as one argument of its own.
+    let mut started = false;
+    let mut quote: Option<char> = None;
+    let mut characters = input.chars();
+    while let Some(character) = characters.next() {
+        match quote {
+            Some(delimiter) => {
+                if character == delimiter {
+                    quote = None;
+                } else if character == '\\' && delimiter == '"' {
+                    if let Some(escaped) = characters.next() {
+                        current.push(escaped);
+                    }
+                } else {
+                    current.push(character);
+                }
+            }
+            None => match character {
+                '\'' | '"' => {
+                    quote = Some(character);
+                    started = true;
+                }
+                '\\' => {
+                    if let Some(escaped) = characters.next() {
+                        current.push(escaped);
+                        started = true;
+                    }
+                }
+                _ if character.is_whitespace() => {
+                    if started {
+                        arguments.push(std::mem::take(&mut current));
+                        started = false;
+                    }
+                }
+                _ => {
+                    current.push(character);
+                    started = true;
+                }
+            },
+        }
+    }
+    if let Some(delimiter) = quote {
+        return Err(format!("the extra engine arguments have an unmatched {delimiter} quote"));
+    }
+    if started {
+        arguments.push(current);
+    }
+    Ok(arguments)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -641,6 +715,7 @@ mod tests {
             disable_flash_attention: true,
             clamp_fp16: true,
             cuda_folder: None,
+            extra_args: String::new(),
         }
         .arguments();
         assert_eq!(
@@ -648,6 +723,26 @@ mod tests {
             vec!["--keep-loaded", "--max-batch", "2", "--max-seq", "8192", "--vae-core", "256", "--vae-halo", "16", "--no-fa", "--clamp-fp16"]
         );
         assert!(YueServerOptions::default().arguments().is_empty());
+
+        // A line of extra arguments arrives last, split the way a shell would
+        // - a quoted value stays one argument - and can therefore also
+        // override a flag the studio set above it.
+        let extra = YueServerOptions { keep_loaded: true, extra_args: "--clown-mode --prompt \"a long value\"".into(), ..Default::default() }.arguments();
+        assert_eq!(extra, vec!["--keep-loaded", "--clown-mode", "--prompt", "a long value"]);
+    }
+
+    #[test]
+    fn an_extra_argument_line_is_split_like_a_shell_would() {
+        assert_eq!(split_extra_args("").unwrap(), Vec::<String>::new());
+        assert_eq!(split_extra_args("   \n ").unwrap(), Vec::<String>::new());
+        assert_eq!(split_extra_args("--flag value").unwrap(), vec!["--flag", "value"]);
+        assert_eq!(split_extra_args("--flag=value --other").unwrap(), vec!["--flag=value", "--other"]);
+        assert_eq!(split_extra_args("--prompt 'two words' --n=1").unwrap(), vec!["--prompt", "two words", "--n=1"]);
+        assert_eq!(split_extra_args("--prompt \"two words\"").unwrap(), vec!["--prompt", "two words"]);
+        assert_eq!(split_extra_args("--prompt two\\ words").unwrap(), vec!["--prompt", "two words"]);
+        assert_eq!(split_extra_args("--empty \"\"").unwrap(), vec!["--empty", ""]);
+        assert!(split_extra_args("--prompt \"unterminated").is_err());
+        assert!(split_extra_args("--prompt 'unterminated").is_err());
     }
 
     #[test]
