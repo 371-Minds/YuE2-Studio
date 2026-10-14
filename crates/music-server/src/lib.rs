@@ -954,6 +954,9 @@ pub async fn serve() -> anyhow::Result<()> {
             pin_placeholders(state).await;
         });
     }
+    if let Some(hub) = &state.hub {
+        state.model_manager.report_to(hub.clone());
+    }
 
     let app = Router::new()
         .route("/health", get(health))
@@ -1127,6 +1130,11 @@ pub async fn serve() -> anyhow::Result<()> {
         // two-megabyte cap rejected a generated cover by dropping the
         // connection, which reaches the interface as "Failed to fetch".
         .layer(DefaultBodyLimit::max(256 * 1024 * 1024));
+    // counted before the MCP tools take the router, so an agent's calls count as the features they use
+    let app = match &state.hub {
+        Some(hub) => hub.track(app),
+        None => app,
+    };
     // the MCP tools call the same routes, inside the process
     mcp::install(app.clone());
     let app = app
@@ -7494,17 +7502,23 @@ fn spawn_job_watcher(state: AppState, job_id: String) {
     tokio::spawn(async move {
         // the parts as they were when the song started: the person may switch sets while it is made
         let parts_at_start = state.selected_component_ids.read().await.clone().unwrap_or_default();
-        follow_job(&state, &job_id).await;
+        let mut started = None;
+        follow_job(&state, &job_id, &mut started).await;
+        let shared = another_job_under_way(&state, &job_id).await;
+        let work = started.flatten().filter(|_| !shared).map(|at| at.elapsed());
         // however it ended, it is no longer one the studio's closing could cut off
         let ended = state.jobs.read().await.get(&job_id).map(|job| {
             let profiles: Vec<String> = job.songs.iter().filter_map(|made| made.song.profile_id.clone()).collect();
-            (job_status_name(&job.status), job.message.clone(), job.songs.len(), profiles)
+            (job_status_name(&job.status), job.message.clone(), job.songs.len(), profiles, songs_seconds(&job.songs))
         });
         if let Some(hub) = &state.hub {
             match ended.as_ref() {
-                Some(("completed", _, songs, profiles)) if *songs > 0 => {
+                Some(("completed", _, songs, profiles, seconds)) if *songs > 0 => {
                     hub.count("songs", *songs as u64);
                     hub.count("song_done", 1);
+                    if let Some(work) = work {
+                        hub.worked("song", *seconds, work);
+                    }
                     for profile in profiles {
                         hub.used_model(profile);
                     }
@@ -7516,15 +7530,15 @@ fn spawn_job_watcher(state: AppState, job_id: String) {
                     };
                     hub.used_models(set.as_deref(), &parts, *songs as u64);
                 }
-                Some(("failed", message, _, _)) => {
+                Some(("failed", message, ..)) => {
                     hub.count("song_failed", 1);
                     hub.failed("song", message);
                 }
-                Some(("cancelled", _, _, _)) => hub.count("song_cancelled", 1),
+                Some(("cancelled", ..)) => hub.count("song_cancelled", 1),
                 _ => {}
             }
         }
-        if let Some((status, message, _, _)) = ended {
+        if let Some((status, message, ..)) = ended {
             // a song that reached the library needs no record of its request any more
             let kept = if status == "completed" { state.library.forget_music_job(&job_id) } else { state.library.set_music_job_status(&job_id, status, &message) };
             if let Err(error) = kept {
@@ -7534,7 +7548,9 @@ fn spawn_job_watcher(state: AppState, job_id: String) {
     });
 }
 
-async fn follow_job(state: &AppState, job_id: &str) {
+/// `started` is when the engine took the job, and stays `Some(None)` for a job that started while another was under
+/// way: that one's time includes waiting its turn, so it is not one to measure the card by.
+async fn follow_job(state: &AppState, job_id: &str, started: &mut Option<Option<std::time::Instant>>) {
     let (state, job_id) = (state.clone(), job_id.to_string());
     {
         let mut unreachable = 0u32;
@@ -7568,6 +7584,9 @@ async fn follow_job(state: &AppState, job_id: &str) {
                     continue;
                 }
             };
+            if remote.status == "running" && started.is_none() {
+                *started = Some((!another_job_under_way(&state, &job_id).await).then(std::time::Instant::now));
+            }
             if remote.status == "done" {
                 let imported = import_completed_result(&state, &existing, &job_id).await;
                 let mut jobs = state.jobs.write().await;
@@ -7601,6 +7620,16 @@ async fn follow_job(state: &AppState, job_id: &str) {
             }
         }
     }
+}
+
+/// Whether another song is queued or being made besides this one.
+async fn another_job_under_way(state: &AppState, job_id: &str) -> bool {
+    state.jobs.read().await.iter().any(|(id, job)| id != job_id && matches!(job.status, MusicJobStatus::Queued | MusicJobStatus::Running))
+}
+
+/// The length of the songs a job made, as the library measured them.
+fn songs_seconds(songs: &[CompletedSong]) -> f64 {
+    songs.iter().filter_map(|made| made.song.metadata.get("duration_seconds").and_then(Value::as_f64)).sum()
 }
 
 async fn import_completed_result(state: &AppState, job: &MusicJob, job_id: &str) -> anyhow::Result<Vec<CompletedSong>> {
