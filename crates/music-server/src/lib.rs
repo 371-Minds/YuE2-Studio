@@ -7028,15 +7028,15 @@ fn engine_failure_reason(state: &AppState, job_id: &str) -> Option<String> {
         return Some("The graphics card ran out of memory while the engine was loading the models. Choose a smaller quantisation in the model manager, or close whatever else is using the card - the writing assistant holds several gigabytes of its own.".to_string());
     }
     let lines = state.engine_log.lines()?;
-    last_fatal(&lines, job_id)
+    first_fatal(&lines, job_id)
 }
 
-/// What the engine said when it gave this job up: the last FATAL line after the
-/// job's own start, without the stage tag.
-fn last_fatal(lines: &[String], job_id: &str) -> Option<String> {
+/// What the engine said when it gave this job up: the first FATAL line after the
+/// job's own start, without the stage tag. The lines after it are its consequences.
+fn first_fatal(lines: &[String], job_id: &str) -> Option<String> {
     let start = format!("Job {job_id}");
     let from = lines.iter().rposition(|line| line.contains(&start))?;
-    lines[from..].iter().rev().find_map(|line| line.split_once("FATAL:").map(|(_, why)| why.trim().to_string())).filter(|why| !why.is_empty())
+    lines[from..].iter().find_map(|line| line.split_once("FATAL:").map(|(_, why)| why.trim().to_string())).filter(|why| !why.is_empty())
 }
 
 /// Whether a lowercased log says the card ran out of room.
@@ -8981,9 +8981,9 @@ mod tests {
     #[test]
     fn a_failed_job_names_the_engines_reason() {
         let lines: Vec<String> = ["[Pipeline] FATAL: an earlier job's reason", "[Server] Job abc: {", "[AR] Semantic 10/9000", "[Pipeline] FATAL: the prompt and the score take 9700 of the model's 24576 tokens, so a song can last 595 s and 600 s were asked for", "[Server] job failed"].iter().map(|line| line.to_string()).collect();
-        assert_eq!(last_fatal(&lines, "abc").unwrap(), "the prompt and the score take 9700 of the model's 24576 tokens, so a song can last 595 s and 600 s were asked for");
-        assert!(last_fatal(&lines[..2], "abc").is_none());
-        assert!(last_fatal(&lines, "other").is_none());
+        assert_eq!(first_fatal(&lines, "abc").unwrap(), "the prompt and the score take 9700 of the model's 24576 tokens, so a song can last 595 s and 600 s were asked for");
+        assert!(first_fatal(&lines[..2], "abc").is_none());
+        assert!(first_fatal(&lines, "other").is_none());
     }
 
     #[test]
