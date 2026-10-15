@@ -415,6 +415,7 @@ export const ru = {
     // Sidebar
     aceStepUI: 'MiniMax Music3 Studio',
     collapseSidebar: 'Свернуть боковую панель',
+    portableEdition: 'портативная',
     expandSidebar: 'Развернуть боковую панель',
     monitoring: 'Мониторинг',
     connected: 'подключён',

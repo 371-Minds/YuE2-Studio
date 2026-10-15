@@ -414,6 +414,7 @@ export const en = {
     // Sidebar
     aceStepUI: 'MiniMax Music3 Studio',
     collapseSidebar: 'Collapse Sidebar',
+    portableEdition: 'Portable',
     expandSidebar: 'Expand Sidebar',
     monitoring: 'Monitoring',
     connected: 'connected',

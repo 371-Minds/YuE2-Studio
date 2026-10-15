@@ -260,12 +260,14 @@ fn proxy_for(settings: &ProxySettings, system: &Matcher, url: &reqwest::Url) -> 
     }
 }
 
-const USER_AGENT: &str = concat!("YuE2-Studio/", env!("CARGO_PKG_VERSION"));
+fn user_agent() -> String {
+    format!("YuE2-Studio/{}", crate::studio_version())
+}
 
 /// A client builder that goes out as the settings say, with the studio's
 /// name: Hugging Face is stricter with clients that send none.
 pub fn builder() -> reqwest::ClientBuilder {
-    with_proxy(reqwest::Client::builder().user_agent(USER_AGENT))
+    with_proxy(reqwest::Client::builder().user_agent(user_agent()))
 }
 
 /// Any client builder routed as the settings say.
@@ -298,7 +300,7 @@ pub async fn test(settings: ProxySettings) -> Result<serde_json::Value> {
     let hub_url = model_url_with(&settings, "https://huggingface.co/api/models?limit=1");
     let system = Matcher::from_system();
     let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
+        .user_agent(user_agent())
         .proxy(reqwest::Proxy::custom(move |url| proxy_for(&settings, &system, url)))
         .timeout(std::time::Duration::from_secs(15))
         .build()?;
