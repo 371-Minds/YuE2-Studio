@@ -633,7 +633,7 @@ async fn lyrics_branch(state: &AppState, job: &Job, lyric_items: &[&training::Da
             match crate::vocal_separator(state).await {
                 Some(separator) if !to_separate.is_empty() => {
                     // the processor was chosen for separation on a machine with a card that runs it
-                    if matches!(state.separation_config.read().await.runtime, lyrics_sync::OnnxFlavour::Cpu) && crate::hardware::hardware().cuda.is_some() {
+                    if matches!(state.separation_config.read().await.runtime, lyrics_sync::OnnxFlavour::Cpu) && crate::hardware::hardware().runs_cuda {
                         update(&shared, |status| status.notices.push("separator_on_cpu"));
                     }
                     stage(&shared, "vocals", to_separate.iter().map(|(item, ..)| item.clone()).collect());

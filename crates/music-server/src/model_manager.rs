@@ -714,7 +714,7 @@ async fn verified_file_async(path: PathBuf, component: Component) -> Result<bool
         .context("join GGUF SHA-256 verification task")?
 }
 
-fn verified_file(path: &Path, component: &Component) -> Result<bool> {
+pub(crate) fn verified_file(path: &Path, component: &Component) -> Result<bool> {
     if fs::metadata(path).map(|metadata| metadata.len()).unwrap_or(0) == 0 {
         return Ok(false);
     }
