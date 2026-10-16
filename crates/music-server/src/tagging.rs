@@ -246,6 +246,9 @@ pub fn genre_from_caption(caption: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+/// Whether a song has a voice; a style names it first, and it is not a genre.
+const ARRANGEMENTS: &[&str] = &["instrumental", "a cappella", "acapella", "no vocals", "vocals"];
+
 /// Vocal languages a style names; a language is not a genre.
 const LANGUAGES: &[&str] = &[
     "english", "mandarin", "chinese", "cantonese", "russian", "japanese", "korean", "spanish",
@@ -268,6 +271,7 @@ fn plausible_genre(phrase: &str) -> bool {
         && !is_label
         && !is_measurement
         && !is_language
+        && !ARRANGEMENTS.contains(&lowered.as_str())
         && !phrase.chars().any(|character| character.is_ascii_digit())
 }
 
@@ -405,6 +409,7 @@ mod tests {
 
     #[test]
     fn a_genre_is_a_phrase_not_a_document() {
+        assert_ne!(genre_from_caption("instrumental, warm lo-fi hip hop with soft piano and vinyl crackle, 85 BPM").as_deref(), Some("instrumental"));
         assert_eq!(genre_from_caption("Darkwave, Synth-pop. Global Emotional Progression: …"), Some("Darkwave".into()));
         assert_eq!(genre_from_caption("Global Metadata: Basic Attributes: bpm is 96. key is A"), None);
         assert_eq!(genre_from_caption("Global Metadata Basic Attributes: bpm is 95"), None);
