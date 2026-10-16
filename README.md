@@ -10,7 +10,8 @@
 **Full songs with an editable score, generated on your own GPU. One executable — no Python, no Node.js, no launcher.**
 
 [![Project page](https://img.shields.io/badge/Project_page-timoncool.github.io-7c3aed?style=for-the-badge)](https://timoncool.github.io/YuE2-Studio/)
-[![Download](https://img.shields.io/badge/Download-Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/timoncool/YuE2-Studio/releases/latest)
+[![Download Windows](https://img.shields.io/badge/Download-Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/timoncool/YuE2-Studio/releases/latest)
+[![Download Linux](https://img.shields.io/badge/Download-Linux_x64-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/timoncool/YuE2-Studio/releases/latest)
 [![Donate](https://img.shields.io/badge/Support-Donate-ff69b4?style=for-the-badge)](DONATE.md)
 
 [![License](https://img.shields.io/github/license/timoncool/YuE2-Studio?style=flat-square)](LICENSE)
@@ -28,8 +29,9 @@ YuE2 Studio is a desktop studio for **YuE2**, the open song model from M-A-P tha
 score before it sings. Describe a style, write the lyrics, and the model composes a melody
 with chords as sheet music, then performs it as a full song with vocals. The score comes
 back with the track: read it, edit it, and render the same composition again with a
-different sound. Windows installer with auto-update or a portable folder, runs offline on
-an NVIDIA card with 6 GB of VRAM or more; AMD and Intel cards through Vulkan are experimental.
+different sound. Available as a Windows installer with auto-update, a portable archive, and native
+Linux packages (.deb and .AppImage). Runs offline on an NVIDIA card with 6 GB of VRAM or more;
+AMD and Intel cards through Vulkan are supported.
 
 It is built on [yue2.cpp](https://github.com/ServeurpersoCom/yue2.cpp), the native C++/CUDA
 port of YuE2. The studio around it is Rust and React in a Tauri window — nothing in the
@@ -256,13 +258,21 @@ or download the MP3s from [docs/samples](docs/samples).
   training. Describing songs by ear needs about 12 GB of VRAM and 10 GB more disk for
   MOSS-Music; without it the styles are written by hand.
 
-### Linux (experimental)
+### Linux
 
-The .deb and the AppImage for Linux x86-64 are **experimental**. They come from the same code with the
-Linux build of the same engine (Vulkan, and the processor), but the author works on Windows and has not
-run them on a real Linux desktop. **If you live on Linux, it would be great if you polished them and sent
-the fixes back as a pull request.** The studio keeps its data in `~/.local/share/yue2-studio`
-(`$XDG_DATA_HOME`).
+YuE2 Studio provides native Linux x86-64 packages as both a Debian/Ubuntu package (`.deb`) and a standalone `.AppImage` (glibc 2.35+, compatible with Ubuntu 22.04+, Debian 12+, Fedora 36+, Arch Linux, and modern distributions).
+
+- **Packages:**
+  - `.deb`: Install with `sudo dpkg -i YuE2-Studio_*_linux-amd64.deb` or `sudo apt install ./YuE2-Studio_*_linux-amd64.deb`. The package installs the binary to `/usr/bin/YuE2 Studio` with bundled runtimes in `/usr/lib/YuE2 Studio/resources/`.
+  - `.AppImage`: Make executable (`chmod +x YuE2-Studio_*_linux-x86_64.AppImage`) and launch directly.
+- **Prerequisites & Libraries:**
+  - GPU drivers with Vulkan support (`mesa-vulkan-drivers` on AMD/Intel, NVIDIA proprietary driver on NVIDIA).
+  - WebKitGTK 4.1 (`libwebkit2gtk-4.1-0`) and AppIndicator (`libayatana-appindicator3-1` or `libappindicator3-1`).
+  - ALSA and GStreamer plugins for audio output (`libasound2`, `gstreamer1.0-plugins-good`, `gstreamer1.0-libav`).
+  - FUSE 2 for AppImage execution (`libfuse2` on Ubuntu 22.04, `libfuse2t64` on Ubuntu 24.04+).
+- **Data & Models Directory:**
+  - User data, settings, songs, and models reside in `$XDG_DATA_HOME/yue2-studio` (defaults to `~/.local/share/yue2-studio/`).
+  - Model weights can be placed directly in `~/.local/share/yue2-studio/models/yue2-cpp/`.
 
 ## What runs where
 
@@ -296,19 +306,25 @@ The main, tested path is an NVIDIA card.
 
 ## Quick start
 
-1. **Install** — run `YuE2.Studio_x.y.z_x64-setup.exe` from the
-   [latest release](https://github.com/timoncool/YuE2-Studio/releases/latest), or unzip the
-   portable archive anywhere and run `YuE2-Studio.exe`.
+1. **Install**
+   - **Windows:** Run `YuE2.Studio_x.y.z_x64-setup.exe` from the
+     [latest release](https://github.com/timoncool/YuE2-Studio/releases/latest), or unzip the
+     portable archive anywhere and run `YuE2-Studio.exe`.
+   - **Linux:** Download the `.deb` or `.AppImage` from the
+     [latest release](https://github.com/timoncool/YuE2-Studio/releases/latest). Install the `.deb`
+     (`sudo apt install ./YuE2-Studio_*_linux-amd64.deb`) or make the AppImage executable
+     (`chmod +x YuE2-Studio_*_linux-x86_64.AppImage`) and run it.
 2. **Choose a model set** — the first screen preselects the set your card can run. Press
    download; it fetches only what is missing and resumes if interrupted.
 3. **Create** — write a style and lyrics, or load one of the examples, and press Create.
    The engine starts by itself and the song lands in your library with its score.
 
-Everything the studio owns stays in its own folder: models, songs, settings, logs,
+On Windows, everything the studio owns stays in its own folder: models, songs, settings, logs,
 temporary files and the WebView2 profile, beside `YuE2-Studio.exe`. That holds for the
 portable archive and for an installation into any folder the studio can write to;
 deleting the folder removes the studio. Only an installation into a read-only location
-such as Program Files falls back to `%LOCALAPPDATA%\YuE2 Studio`. The installed version
+such as Program Files falls back to `%LOCALAPPDATA%\YuE2 Studio`. On Linux, data and models
+are stored in `~/.local/share/yue2-studio/` (`$XDG_DATA_HOME/yue2-studio/`). The installed version
 updates itself: a new release is offered inside the studio and installed in place.
 
 **If the installer stops on WebView2.** The studio's window runs on Microsoft Edge WebView2,
@@ -374,9 +390,10 @@ pinned to revision `e2e63d8`; all are checked by size and SHA-256. They are writ
 can be dropped into by hand at:
 
 - `<the studio's folder>\data\models\yue2-cpp\` — the portable folder, or the folder
-  you installed into
-- `%LOCALAPPDATA%\YuE2 Studio\models\yue2-cpp\` — only for an installation into a
+  you installed into (Windows)
+- `%LOCALAPPDATA%\YuE2 Studio\models\yue2-cpp\` — for a Windows installation into a
   read-only location
+- `~/.local/share/yue2-studio/models/yue2-cpp/` (`$XDG_DATA_HOME/yue2-studio/models/yue2-cpp/`) — on Linux
 
 A file placed by hand with the exact catalogue name is recognised and never downloaded again.
 
@@ -492,11 +509,12 @@ Behind a proxy, take the two DLLs from the archive's `bin\` folder and drop them
 
 ```text
 React UI ─┐
-          ├─ YuE2-Studio.exe   (Tauri window + Rust/Axum service on 127.0.0.1:8791)
+          ├─ YuE2-Studio       (Tauri window + Rust/Axum service on 127.0.0.1:8791)
 Rust axum ┘        │
-                   ├─ yue2.cpp `yue-server`   (C++/CUDA, GGUF, 127.0.0.1:18087)
-                   ├─ music-train.exe         (HOT-Step ace-train, LoRA training, optional)
-                   └─ vst-host.exe            (HOT-Step VST3 host, a process of its own)
+                   ├─ yue2.cpp `yue-server`   (C++/CUDA/Vulkan, GGUF, 127.0.0.1:18087)
+                   ├─ music-train             (HOT-Step ace-train, LoRA training, optional)
+                   ├─ music-midi              (HOT-Step ace-midi, audio-to-MIDI)
+                   └─ vst-host                (HOT-Step VST3 host, a process of its own)
 ```
 
 The service is compiled into the desktop binary. It supervises the engine process, restarts
@@ -506,7 +524,14 @@ log: score, audio codes, acoustic rendering, decoding.
 
 ## Building from source
 
-```powershell
+### Prerequisites
+- Node.js 22+
+- Rust stable toolchain
+- On Linux: `build-essential pkg-config cmake ninja-build libssl-dev libasound2-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libvulkan-dev glslc`
+
+### Testing and Development
+
+```bash
 npm --prefix app install
 npm --prefix desktop install
 cargo test --workspace
@@ -515,26 +540,23 @@ npm --prefix app test
 
 Developing the UI against a running service:
 
-```powershell
+```bash
 cargo run -p music-server           # service on 127.0.0.1:8791
 npm --prefix app run dev            # UI on 127.0.0.1:3791
 ```
 
-The engine: `scripts/build-yue-runtime.ps1 -RuntimeBackend all` builds the pinned yue2.cpp
-commit (`engines/yue2-cpp-source.json`) with runtime-loaded CUDA, Vulkan and CPU backends,
-using CUDA 13, the Vulkan SDK, MSVC and Ninja. `scripts/build-release.ps1 -Version X.Y.Z` produces the NSIS installer, the
-portable archive and the signed `latest.json` for the updater; it reads the signing key from
-`TAURI_SIGNING_PRIVATE_KEY` or `%USERPROFILE%\.tauri\yue2-studio.key`. Model weights are
-never part of a release.
+### Packaging
 
-Linux packages are built on the release machine in an Ubuntu 22.04 container (glibc 2.35; Docker, under WSL on
-Windows): `scripts/build-linux-docker.sh <output folder>` builds the committed HEAD with
-`scripts/build-release-linux.sh` and checks that the engine starts. Only the .dmg is built on GitHub, by
-the `macOS build` workflow (`.github/workflows/release-unix.yml`, started by hand, optionally with a
-release tag to attach it to): there is no Mac on the release machine.
-
-On macOS there is no packaged engine, so build it once from source (needs Xcode command line
-tools and CMake) and again whenever `engines/yue2-cpp-source.json` moves to a new commit:
+- **Windows:** `scripts/build-release.ps1 -Version X.Y.Z` produces the NSIS installer, the
+  portable archive and the signed `latest.json` for the updater; it reads the signing key from
+  `TAURI_SIGNING_PRIVATE_KEY` or `%USERPROFILE%\.tauri\yue2-studio.key`. Model weights are
+  never part of a release.
+- **Linux:** Run `bash scripts/build-release-linux.sh` to produce `.deb` and `.AppImage` packages
+  bundling the Vulkan and CPU `yue-server` and `music-midi` runtimes. Or build cleanly in an
+  Ubuntu 22.04 container via `scripts/build-linux-docker.sh <output folder>`. Releases can also
+  be built via GitHub Actions (`.github/workflows/release-unix.yml`).
+- **macOS:** `scripts/build-release-macos.sh` produces the `.dmg` bundle with Metal acceleration,
+  or build the engine once from source:
 
 ```bash
 scripts/build-yue-runtime.sh ~/yue2-engine          # builds the pinned commit with Metal
