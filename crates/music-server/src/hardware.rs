@@ -24,6 +24,9 @@ pub struct Hardware {
     /// The CUDA build of the engine this card and its driver run, none when
     /// neither does: such a card computes on Vulkan.
     pub cuda: Option<CudaBuild>,
+    /// Whether the card and its driver run CUDA at all - what the ONNX Runtime's
+    /// CUDA build needs - whichever build of the engine this platform ships.
+    pub runs_cuda: bool,
     /// The NVIDIA card's compute capability, `[7, 5]` for Turing.
     pub compute_capability: Option<(u32, u32)>,
     /// The model set id that fits this card, none when no set does.
@@ -102,6 +105,7 @@ fn probe() -> &'static Hardware {
         let device = if nvidia { nvidia_cuda_device() } else { None };
         // The CUDA builds of the engine and their cuBLAS ship for Windows only; the Linux package
         // carries the Vulkan engine and the macOS one Metal, whatever the card.
+        let runs_cuda = device.and_then(|(compute, driver)| cuda_build(compute, driver)).is_some();
         let cuda = if cfg!(windows) { device.and_then(|(compute, driver)| cuda_build(compute, driver)) } else { None };
         let compute_capability = device.map(|(compute, _)| compute);
         Hardware {
@@ -110,6 +114,7 @@ fn probe() -> &'static Hardware {
             total_ram_gb,
             nvidia,
             cuda,
+            runs_cuda,
             compute_capability,
             recommended: profile_for_machine(total_vram_gb, total_ram_gb, crate::model_manager::profile_weights_bytes),
         }

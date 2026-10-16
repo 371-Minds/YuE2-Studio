@@ -29,6 +29,7 @@ import { midiImportOptions } from '../i18n/midiImportOptions';
 import { SongTextParts } from './SongTextParts';
 import { writerInstruction } from '../services/songWriting';
 import { songWritingStrings } from '../i18n/songWriting';
+import { NumberField } from './NumberField';
 
 /**
  * The YuE2 request form.
@@ -224,8 +225,8 @@ const SliderRow: React.FC<{
     <div className={disabled ? 'opacity-50' : undefined}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{label}</span>
-        <span className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-300">
-          {format ? format(shown) : `${shown.toFixed(decimals)}${suffix ?? ''}`}
+        <span className="flex items-center text-[11px] tabular-nums text-zinc-600 dark:text-zinc-300">
+          <NumberField value={shown} min={min} max={max} step={step} label={label} disabled={disabled} format={format ?? (number => `${number.toFixed(decimals)}${suffix ?? ''}`)} onChange={number => onChange(String(number))} />
           {value.trim() === '' && <span className="ml-1 text-zinc-400" title="engine default">·</span>}
         </span>
       </div>
