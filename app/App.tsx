@@ -1219,7 +1219,7 @@ function AppContent() {
               setIsCreatePlaylistModalOpen(true);
             }}
             onSelectPlaylist={(p) => handleNavigateToPlaylist(p.id)}
-            onImported={libraryChanged}
+            onImported={count => { libraryChanged(); showToast(t('importedToLibrary').replace('{count}', String(count))); }}
             likedSongIds={likedSongIds}
             onToggleLike={toggleLike}
             onAddToPlaylist={openAddToPlaylistModal}
